@@ -103,12 +103,46 @@ end
 
 RMSE=sqrt(squeeze(sum(sum(dissimilar)))/N); %finishing the RMSE calculation -> sum up difference from sum components divide by the number of possible 
 
-%reshape RSME by group condition
+%Only works if the groups are separate from one  another doesn't work if
+%they are intermixed... fix?
+%reshape RSME by group condition -> If groups are different sizes this
+%breaks because it introduces 0 into the indexing! make that the position
 for m=1:max(group_idx)
     [Group_RMSE(1:total_group(m),m),Group_RMSE_Order(1:total_group(m),m)]=sort(RMSE(group_idx==m));
     
     Group_RMSE_Order(1:total_group(m),m)=sum(total_group(1:m-1))+Group_RMSE_Order(1:total_group(m),m);
 end
+
+if numel(unique(total_group,'stable'))>1 %if there are different size groups in the data!
+    % we will add 0 data into the table to position correctly the lookups
+    % for group and gender (don't use because not real ==0)
+    temp=zeros(max(total_group)*numel(unique(total_group,'stable')),1);
+    temp_2=zeros(max(total_group)*numel(unique(total_group,'stable')),1);
+    for p=1:numel(total_group)
+            if p>1
+                temp((1:total_group(p))+total_group(p-1))=group_idx(group_idx==p);   
+                temp_2((1:total_group(p))+total_group(p-1))=gender_idx(group_idx==p);
+                
+            else
+                temp(1:total_group(p))=group_idx(group_idx==p);
+                temp_2(1:total_group(p))=gender_idx(group_idx==p);
+            end
+    end
+    
+    group_idx=temp;
+    gender_idx=temp_2;
+    
+    if sum(Group_RMSE_Order(:,p)==0)>0 %adjust the 0 to keep at the end at the set so we can keep pulling data correctly
+        Group_RMSE_Order(Group_RMSE_Order(:,p)==0,p)=max(Group_RMSE_Order(:,p))+1;
+    end
+
+    if sum(Group_Order(:,p)==0)>0 %adjust the 0 to keep at the end at the set so we can keep pulling data correctly 
+        Group_Order(:,p)=Group_Order(:,p)+1;
+    end
+
+    
+end
+
 
 reshaped_gender_idx=reshape(gender_idx,[max(total_group), size(total_group,2)]); %reshaped into groups (second index) the full gender indexing.
 reshaped_gender_idx=reshaped_gender_idx(Group_RMSE_Order);
